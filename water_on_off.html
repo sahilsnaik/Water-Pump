@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Pump CONTROL</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            object-fit: cover;
+        }
+
+        /* .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20%;
+            background: url('wave.png');
+            background-size: 100% 100%;
+            animation: wave-animation 2s infinite linear;
+        } */
+
+        @keyframes wave-animation {
+            0% {
+                background-position-x: 0;
+            }
+            100% {
+                background-position-x: 100%;
+            }
+        }
+
+        .overlay {
+            background: rgba(0, 0, 0, 0.4);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .navbar a {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a:hover {
+            color: #4CAF50;
+        }
+
+        .pump-container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+
+        .status-icon {
+            font-size: 24px;
+            margin-right: 8px;
+        }
+
+        .control-history {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: scroll;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        .advanced-features {
+            margin-top: 20px;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .feature-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .feature-value {
+            flex-grow: 1;
+            text-align: right;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans relative">
+    <video id="video-background" autoplay loop muted preload="auto">
+        <!-- Replace 'your-video-source.mp4' with the actual video source URL -->
+        <source src="sea.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <div class="wave"></div>
+    <div class="overlay"></div>
+    <div class="navbar p-4">
+        <a href="#">Home</a>
+        <a href="#">About</a>
+        <a href="#">Services</a>
+        <a href="#">Contact</a>
+    </div>
+    <div class="flex items-center justify-center min-h-screen">
+        <div class="pump-container max-w-md w-full">
+            <h1 class="text-4xl font-semibold text-center text-gray-800 mb-6">Water Pump Control</h1>
+            <p id="status" class="text-lg font-medium text-center text-gray-700 mb-6">
+                Status: <i class="status-icon fas fa-power-off text-red-500"></i> Off
+            </p>
+            <button id="control-button" class="bg-green-500 hover:bg-green-600 focus:outline-none text-white font-semibold py-3 px-6 rounded-full w-full transition duration-300 ease-in-out transform hover:scale-105 pulse-animation">
+                <span id="button-text">Turn On</span>
+                <span id="button-loader" class="hidden animate-spin ml-2">&#9696;</span>
+            </button>
+            <div class="control-history" id="control-history">
+                <!-- Control history will be displayed here -->
+            </div>
+            <div class="notification" id="notification">Pump status changed!</div>
+            <div class="advanced-features">
+                <!-- Advanced features will be added here -->
+                <div class="feature">
+                    <span class="feature-label">Temperature:</span>
+                    <span class="feature-value">25°C</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-label">Water Level:</span>
+                    <span class="feature-value">Normal</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-label">Flow Rate:</span>
+                    <span class="feature-value">10 L/min</span>
+                </div>
+            </div>
+        </div>
+    </div> 
+    <script>
+        // Replace '192.168.229.141' with your ESP8266's actual IP address
+        const esp8266IpAddress = '172.20.10.2';
+
+        const statusElement = document.getElementById('status');
+        const controlButton = document.getElementById('control-button');
+        const buttonText = document.getElementById('button-text');
+        const buttonLoader = document.getElementById('button-loader');
+        const controlHistory = document.getElementById('control-history');
+        const notification = document.getElementById('notification');
+        let pumpStatus = false;
+        let controlCount = 0;
+
+        function togglePump() {
+            // Toggle the pump status locally
+            pumpStatus = !pumpStatus;
+            const newStatus = pumpStatus ? 'On' : 'Off';
+            const icon = pumpStatus ? 'fas fa-power-off text-green-500' : 'fas fa-power-off text-red-500';
+            statusElement.innerHTML = `Status: <i class="status-icon ${icon}"></i> ${newStatus}`;
+            buttonText.textContent = pumpStatus ? 'Turn Off' : 'Turn On';
+
+            // Send an HTTP request to your ESP8266 to control the pump
+            const apiUrl = `http://${esp8266IpAddress}/${pumpStatus ? 'on' : 'off'}`;
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    // Handle the response from the ESP8266 if needed
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+
+            // Update control history and show notification (similar to your existing code)
+            const controlTime = new Date().toLocaleString();
+            controlHistory.innerHTML += `<p>Control #${++controlCount}: ${newStatus} (${controlTime})</p>`;
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+
+            // Add animation and console log (similar to your existing code)
+            buttonLoader.classList.toggle('hidden');
+            setTimeout(() => {
+                buttonLoader.classList.toggle('hidden');
+            }, 1000);
+
+            console.log(`Pump turned ${newStatus}`);
+        }
+
+        controlButton.addEventListener('click', togglePump);
+    </script>
+    
+</body>
+</html>
